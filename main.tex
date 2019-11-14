@@ -1,0 +1,2129 @@
+\documentclass[10pt]{article}
+
+\addtolength{\textwidth}{34mm}
+\addtolength{\oddsidemargin}{-17mm}
+\addtolength{\textheight}{34mm}
+%\addtolength{\topmargin}{-17mm}
+\addtolength{\topmargin}{-24mm}
+
+\usepackage{listings,color}
+
+%ここからソースコードの表示に関する設定
+\definecolor{OliveGreen}{cmyk}{0.64,0,0.95,0.40}
+\definecolor{colFunc}{rgb}{1,0.07,0.54}
+\definecolor{CadetBlue}{cmyk}{0.62,0.57,0.23,0}
+\definecolor{Brown}{cmyk}{0,0.81,1,0.60}
+\definecolor{colID}{rgb}{0.63,0.44,0}
+\lstset{
+language=C++,%プログラミング言語によって変える。
+basicstyle={\ttfamily\small},
+keywordstyle={\color{OliveGreen}},
+%\[2\]\[3\]はプログラミング言語によってあったり、なかったり
+keywordstyle={[2]\color{colFunc}},
+keywordstyle={[3]\color{CadetBlue}},%
+commentstyle={\color{Brown}},
+%identifierstyle={\color{colID}},
+stringstyle=\color{blue},
+tabsize=2,
+frame=trBL,
+numbers=left,
+numberstyle={\ttfamily\small},
+breaklines=true,%折り返し
+captionpos=b
+}
+%ここまでソースコードの表示に関する設定
+
+\title{Seica Lib}
+\author{seica}
+\date{2019/11/15}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\clearpage
+
+\section{Template}
+\begin{lstlisting}
+#include <bits/stdc++.h>
+
+using namespace std;
+
+#define REP(i,n) for(ll (i) = (0);(i) < (n);++i)
+#define REV(i,n) for(ll (i) = (n) - 1;(i) >= 0;--i)
+#define PB push_back
+#define EB emplace_back
+#define MP make_pair
+#define FI first
+#define SE second
+#define SHOW1d(v,n) {REP(WW,n)cerr << v[WW] << ' ';cerr << endl << endl;}
+#define SHOW2d(v,WW,HH) {REP(W_,WW){REP(H_,HH)cerr << v[W_][H_] << ' ';cerr << endl;}cerr << endl;}
+#define ALL(v) v.begin(),v.end()
+#define Decimal fixed<<setprecision(20)
+#define INF 1000000000
+#define LLINF 1000000000000000000LL
+#define MOD 998244353
+
+typedef long long ll;
+typedef pair<ll,ll> P;
+
+int main(){
+	cin.tie(0);cout.tie(0);ios::sync_with_stdio(false);
+
+	return 0;
+}
+\end{lstlisting}
+
+
+\section{Graph}
+\subsection{Dinic}
+\begin{lstlisting}
+struct Dinic {
+	struct edge{int to;long long cap,rev;};
+	vector<vector<edge>> G;
+	vector<int> level;
+	vector<int> iter;
+
+	Dinic(int n):G(n, vector<edge>()),level(n),iter(n){}
+
+	void add_edge(int from,int to,long long cap){
+		G[from].push_back((edge){to,cap,(ll)G[to].size()});
+		G[to].push_back((edge){from,0,(ll)G[from].size()-1});
+	}
+
+	void bfs(int s){
+		fill(level.begin(), level.end(), -1);
+		queue<int> que;
+		level[s] = 0;
+		que.push(s);
+		while(!que.empty())	{
+			int v = que.front();que.pop();
+			for(int i = 0;i < G[v].size();++i){
+				edge &e = G[v][i];
+				if(e.cap > 0 && level[e.to] < 0){
+					level[e.to] = level[v] + 1;
+					que.push(e.to);
+				}
+			}
+		}
+	}
+
+	int dfs(int v ,int t,long long f){
+		if(v == t)return f;
+		for(int &i = iter[v];i < G[v].size() ;++i){
+			edge &e = G[v][i];
+			if(e.cap > 0 && level[v] < level[e.to]){
+				long long d = dfs(e.to,t,min(f,e.cap));
+				if(d > 0){
+					e.cap -= d;
+					G[e.to][e.rev].cap += d;
+					return d;
+				}
+			}
+		}
+		return 0;
+	}
+
+	long long solve(int s,int t){
+		long long flow = 0;
+		while(1){
+			bfs(s);
+			if(level[t] < 0)return flow;
+			fill(iter.begin(), iter.end(), 0);
+			long long f;while((f = dfs(s,t,INF)) > 0)flow += f;
+		}
+	}
+};
+\end{lstlisting}
+
+\subsection{Min Cost Flow}
+\begin{lstlisting}
+class minCostFlow {
+
+	struct edge { ll to, cap, cost, rev; };
+
+	ll V;
+	vector<vector<edge>> G;
+	vector<ll> dist;
+	vector<ll> prevv;
+	vector<ll> preve;
+
+public:
+
+	minCostFlow(ll n): G(n), dist(n), prevv(n), preve(n), V(n){
+	}
+
+	void addEdge(ll from, ll to, ll cap, ll cost) {
+		G[from].push_back((edge){to, cap, cost, (ll)G[to].size()});
+		G[to].push_back((edge){from, 0, -cost, (ll)G[from].size() - 1});
+	}
+
+	ll solve(ll s, ll t, ll f) {
+		ll ret = 0;
+		while(f > 0) {
+			fill(dist.begin(), dist.end(), LLINF);
+			dist[s] = 0;
+			bool update = true;
+			while(update) {
+				update = false;
+				for(ll v = 0;v < V;v++) {
+					if(dist[v] == LLINF)continue;
+					for(ll i = 0;i < G[v].size();i++) {
+						edge &e = G[v][i];
+						if(e.cap > 0 && dist[e.to] > dist[v] + e.cost) {
+							dist[e.to] = dist[v] + e.cost;
+							prevv[e.to] = v;
+							preve[e.to] = i;
+							update = true;
+						}
+					}
+				}
+			}
+			if(dist[t] == LLINF) {
+				return LLINF;//流せない
+			}
+
+			ll d = f;
+			for(ll v = t;v != s;v = prevv[v]) {
+				d = min(d, G[prevv[v]][preve[v]].cap);
+			}
+			f -= d;
+			ret += d * dist[t];
+			for(ll v = t;v != s;v = prevv[v]) {
+				edge &e = G[prevv[v]][preve[v]];
+				e.cap -= d;
+				G[v][e.rev].cap += d;
+			}
+		}
+		return ret;
+	}
+
+};
+\end{lstlisting}
+
+\subsection{Max Two Matching}
+\begin{lstlisting}
+#define MAX_V 2222
+vector<int> v[MAX_V];
+int match[MAX_V];
+bool used[MAX_V];
+
+void add_edge(int a,int b){
+	v[a].PB(b);
+	v[b].PB(a);
+}
+
+bool matchdfs(int a){
+	used[a] = true;
+	for(int i = 0;i < v[a].size();i++)	{
+		int u = v[a][i],w = match[u];
+		if(w < 0 || !used[w] && matchdfs(w)){
+			match[u] = a;
+			match[a] = u;
+			return true;
+		}
+	}
+	return false;
+}
+
+//二部マッチング
+int two_matching_max(int l){
+	int res = 0;
+	memset(match,-1,sizeof(match));
+	REP(v,l){
+		if(match[v] < 0){
+			memset(used,0,sizeof(used));
+			if(matchdfs(v))res++;
+		}
+	}
+	return res;
+}
+\end{lstlisting}
+
+\subsection{Strongly Connected Components}
+\begin{lstlisting}
+struct SCC {
+	vector<vector<int>> G;
+	vector<vector<int>> rG;
+	vector<int> vs;
+	vector<bool> used;
+	vector<int> cmp;
+	vector<int> sorted_num; // SCC 後のトポロジカルソートの順番が入る
+	int sz,newsz;
+	SCC(int n):G(n),rG(n),used(n,false),cmp(n){sz = n;}
+
+	//辺を張る
+	void add_edge(int from,int to){
+		G[from].PB(to);
+		rG[to].PB(from);
+	}
+
+	void dfs(int v){
+		used[v] = true;
+		REP(i,G[v].size()){
+			if(!used[G[v][i]])dfs(G[v][i]);
+		}
+		vs.PB(v);
+	}
+
+	void rdfs(int v,int k){
+		used[v] = false;
+		cmp[v] = k;
+		REP(i,rG[v].size()){
+			if(used[rG[v][i]])rdfs(rG[v][i],k);
+		}
+	}
+
+	//SCC実行
+	int solve(){
+		vs.clear();
+		REP(i,sz)if(!used[i])dfs(i);
+		int k = 0;
+		for(int i = sz-1;i >= 0;i--){
+			if(used[vs[i]]){
+				rdfs(vs[i],k++);
+			}
+		}
+		return newsz = k;
+	}
+
+	//SCC した後の頂点を返す
+	int scc_node(int n){
+		return cmp[n];
+	}
+
+	// 同じ頂点か
+	bool isSameGroup(int a, int b){
+		return cmp[a] == cmp[b];
+	}
+
+	// SCC 後のグラフのトポロジカルシート
+	void topological_sort() {
+		sorted_num.resize(newsz);
+        vector<int> cou(newsz);
+        vector<vector<int>> new_v(newsz);
+
+        REP(i, sz){
+            new_v[scc_node(i)].PB(i);
+        }
+
+        queue<int> q;
+        REP(i, newsz){
+            REP(j, new_v[i].size()){
+                int node = new_v[i][j];
+                REP(k, rG[node].size()){
+                    int aite = rG[node][k];
+                    if(isSameGroup(node, aite))continue;
+                    cou[i]++;
+                }
+            }
+            if(cou[i] == 0){
+                q.push(i);
+            }
+        }
+
+        int num = 0;
+        while(!q.empty()){
+            int now = q.front();q.pop();
+            sorted_num[now] = num;
+            num++;
+
+            REP(i, new_v[now].size()){
+                int node = new_v[now][i];
+                REP(j, G[node].size()){
+                    int aite = G[node][j];
+                    if(isSameGroup(node, aite))continue;
+                    cou[scc_node(aite)]--;
+
+                    if(cou[scc_node(aite)] == 0){
+                        q.push(scc_node(aite));
+                    }
+                }
+            }
+        }
+	}
+
+	// SCC 後のトポロジカル順序を返す
+	int topological_order(int node){
+		return sorted_num[cmp[node]];
+	}
+};
+\end{lstlisting}
+
+
+\section{String}
+\subsection{Aho Corasick}
+\begin{lstlisting}
+template< int char_size >
+struct TrieNode {
+	int nxt[char_size + 1];
+
+	int exist;
+	vector< int > accept;
+
+	TrieNode() : exist(0) {
+		memset(nxt, -1, sizeof(nxt));
+	}
+};
+
+template< int char_size, int margin >
+struct Trie {
+	using Node = TrieNode< char_size >;
+
+	vector< Node > nodes;
+	int root;
+
+	Trie() : root(0) {
+		nodes.push_back(Node());
+	}
+
+	void update_direct(int node, int id) {
+		nodes[node].accept.push_back(id);
+	}
+
+	void update_child(int node, int child, int id) {
+		++nodes[node].exist;
+	}
+
+	void add(const string &str, int str_index, int node_index, int id) {
+		if(str_index == str.size()) {
+			update_direct(node_index, id);
+		} else {
+			const int c = str[str_index] - margin;
+			if(nodes[node_index].nxt[c] == -1) {
+				nodes[node_index].nxt[c] = (int) nodes.size();
+				nodes.push_back(Node());
+			}
+			add(str, str_index + 1, nodes[node_index].nxt[c], id);
+			update_child(node_index, nodes[node_index].nxt[c], id);
+		}
+	}
+
+	void add(const string &str, int id) {
+		add(str, 0, 0, id);
+	}
+
+	void add(const string &str) {
+		add(str, nodes[0].exist);
+	}
+
+	void query(const string &str, const function< void(int) > &f, int str_index, int node_index) {
+		for(auto &idx : nodes[node_index].accept) f(idx);
+		if(str_index == str.size()) {
+			return;
+		} else {
+			const int c = str[str_index] - margin;
+			if(nodes[node_index].nxt[c] == -1) return;
+			query(str, f, str_index + 1, nodes[node_index].nxt[c]);
+		}
+	}
+
+	void query(const string &str, const function< void(int) > &f) {
+		query(str, f, 0, 0);
+	}
+
+	int size() const {
+		return (nodes[0].exist);
+	}
+
+	int nodesize() const {
+		return ((int) nodes.size());
+	}
+};
+
+
+template< int char_size, int margin >
+struct AhoCorasick : Trie< char_size, margin > {
+	using TRIE = Trie< char_size, margin >;
+	static const int FAIL = char_size;
+	vector< int > correct;
+
+	AhoCorasick() : TRIE() {}
+
+	void build(bool heavy = true) {
+		correct.resize(TRIE::nodes.size());
+		for(int i = 0; i < TRIE::nodes.size(); i++) {
+			correct[i] = (int) TRIE::nodes[i].accept.size();
+		}
+
+		queue< int > que;
+		for(int i = 0; i <= char_size; i++) {
+			if(~TRIE::nodes[0].nxt[i]) {
+				TRIE::nodes[TRIE::nodes[0].nxt[i]].nxt[FAIL] = 0;
+				que.emplace(TRIE::nodes[0].nxt[i]);
+			} else {
+				TRIE::nodes[0].nxt[i] = 0;
+			}
+		}
+		while(!que.empty()) {
+			TrieNode< char_size > &now = TRIE::nodes[que.front()];
+			correct[que.front()] += correct[now.nxt[FAIL]];
+			que.pop();
+			for(int i = 0; i < char_size; i++) {
+				if(now.nxt[i] == -1) continue;
+				int fail = now.nxt[FAIL];
+				while(TRIE::nodes[fail].nxt[i] == -1) fail = TRIE::nodes[fail].nxt[FAIL];
+				TRIE::nodes[now.nxt[i]].nxt[FAIL] = TRIE::nodes[fail].nxt[i];
+				if(heavy) {
+					auto &u = TRIE::nodes[now.nxt[i]].accept;
+					auto &v = TRIE::nodes[TRIE::nodes[fail].nxt[i]].accept;
+					vector< int > accept;
+					set_union(begin(u), end(u), begin(v), end(v), back_inserter(accept));
+					u = accept;
+				}
+				que.emplace(now.nxt[i]);
+			}
+
+		}
+	}
+
+	int match(const string &str, vector< int > &result, int now = 0) {
+		result.assign(TRIE::size(), 0);
+		int count = 0;
+		for(auto &c : str) {
+			while(TRIE::nodes[now].nxt[c - margin] == -1) now = TRIE::nodes[now].nxt[FAIL];
+			now = TRIE::nodes[now].nxt[c - margin];
+			count += correct[now];
+			for(auto &v : TRIE::nodes[now].accept) ++result[v];
+		}
+		return (count);
+	}
+
+	int match(const string &str, vector< vector< int > > &result, int now = 0) {
+		result.assign(TRIE::size(), vector<int>());
+		int count = 0;
+		for(int i = 0;i < str.size();i++) {
+			char c = str[i];
+			while(TRIE::nodes[now].nxt[c - margin] == -1) now = TRIE::nodes[now].nxt[FAIL];
+			now = TRIE::nodes[now].nxt[c - margin];
+			count += correct[now];
+			for(auto &v : TRIE::nodes[now].accept) result[v].PB(i);
+		}
+		return (count);
+	}
+
+	int move(const char &c, int &now) {
+		int count = 0;
+		while(TRIE::nodes[now].nxt[c - margin] == -1) now = TRIE::nodes[now].nxt[FAIL];
+		now = TRIE::nodes[now].nxt[c - margin];
+		count += correct[now];
+		return (count);
+	}
+};
+
+int needs[111111];
+string in[111111];
+//https://codeforces.com/problemset/problem/963/D
+int main(){
+
+	fastcin();
+	AhoCorasick<26, 'a'> aho;
+
+	string str;cin >> str;
+	int n;cin >> n;
+	REP(i,n){
+		cin >> needs[i];
+		cin >> in[i];
+		aho.add(in[i]);
+	}
+	aho.build();
+	vector<vector<int>> ans(n);
+	aho.match(str, ans);
+
+	REP(i,n){
+		if(ans[i].size() < needs[i]){
+			cout << -1 << endl;
+			continue;
+		}
+
+		int out = INF;
+		REP(j,ans[i].size() - needs[i] + 1){
+			out = min(out, ans[i][j+needs[i]-1] - ans[i][j] + (int)in[i].size());
+		}
+		cout << out << endl;
+	}
+
+	return 0;
+}
+\end{lstlisting}
+
+\subsection{Z algorithm}
+\begin{lstlisting}
+vector<int> z_algorithm(string s){
+   int n = s.size();
+   vector<int> ret(n);
+   ret[0] = n;
+   int i = 1, j = 0;
+   while(i < s.size()){
+       while(i+j < s.size() && s[j] == s[i+j])++j;
+       ret[i] = j;
+       if(j == 0){ ++i; continue; }
+       int k = 1;
+       while(i + k < s.size() && k + ret[k] < j)ret[i+k] = ret[k],++k;
+       i += k; j -= k;
+   }
+   return ret;
+}
+\end{lstlisting}
+
+\subsection{Rolling Hash}
+\begin{lstlisting}
+#define N 3
+ll mod[] = {999999937,1000000007,1000000009};
+ll kake = 123123;
+
+ll m_pow(ll a,ll b,ll p){
+	ll ret = 1;
+	ll tmp = a;
+	for(ll i = 0LL;i < 60;i++){
+		if(b & (1LL << i)){
+			ret *= tmp;
+			ret %= p;
+		}
+		tmp *= tmp;
+		tmp %= p;
+	}
+	return ret;
+}
+
+//strが元の文字列、sが探したい文字列、一致する頭のリストを返す、O(N+M)
+vector<int> RollingHash(string str,string s){
+	vector<int> ret;
+	ll mark[N] = {};
+	REP(i,s.size()){
+		REP(j,N){
+			mark[j] *= kake;
+			mark[j] += (int)s[i];
+			mark[j] %= mod[j];
+		}
+	}
+	ll po[N];
+	REP(i,N)po[i] = m_pow(kake,s.size()-1,mod[i]);
+	ll now[N] = {};
+	REP(i,str.size()){
+		bool flag = true;
+		REP(j,N){
+			if(i >= s.size()){
+				ll tmp = po[j] * (int)str[i-s.size()] % mod[j];
+				now[j] = (now[j] + mod[j] - tmp) % mod[j];
+			}
+			now[j] *= kake;
+			now[j] += (int)str[i];
+			now[j] %= mod[j];
+			if(now[j] != mark[j])flag = false;
+		}
+		if(flag)ret.PB(i-s.size()+1);
+	}
+	return ret;
+}
+
+int main(){
+
+	string a,b;cin >> a >> b;
+	vector<int> ans = RollingHash(a,b);
+	REP(i,ans.size()){
+		cout << ans[i] << endl;
+	}
+
+	return 0;
+}
+\end{lstlisting}
+
+\subsection{Suffix Array}
+\begin{lstlisting}
+struct SuffixArray {
+
+	int n,k;
+	string S;
+	vector<int> rnk,tmp,sa,lcp;
+
+	SuffixArray(string s){
+		S = s;
+		n = s.size();
+		rnk.resize(n+1);
+		tmp.resize(n+1);
+		sa.resize(n+1);
+		lcp.resize(n+1);
+		construct_sa();
+		construct_lcp();
+	}
+
+	void construct_sa(){
+
+		for(int i = 0; i <= n;i++){
+			sa[i] = i;
+			rnk[i] = i < n ? S[i] : -1;
+		}
+
+		auto comp = [&](int &i, int &j){
+			if(rnk[i] != rnk[j]){
+				return rnk[i] < rnk[j];
+			}
+			else{
+				int ri =( i + k <= n )? rnk[i + k] : -1;
+				int rj =( j + k <= n )? rnk[j + k] : -1;
+				return ri < rj;
+			}
+		};
+
+		for(k = 1;k <= n ; k *= 2){
+			sort(sa.begin(), sa.end(), comp);
+
+			tmp[sa[0]] = 0;
+			for(int i = 1; i <= n; i++)	{
+				tmp[sa[i]] = tmp[sa[i -1]] + (comp(sa[i - 1],sa[i]) ? 1 : 0);
+			}
+			for(int i = 0;i <= n;i++){
+				rnk[i] = tmp[i];
+			}
+		}
+	}
+
+	bool contain(string t){
+		int a = 0,b = S.length();
+		while(b - a > 1){
+			int c = (a + b) / 2;
+
+			if(S.compare(sa[c],t.length(),t) < 0) a = c;
+			else b = c;
+		}
+
+		return (S.compare(sa[b], t.length(),t) == 0);
+	}
+
+	void construct_lcp(){
+		int n = S.length();
+		for(int i = 0;i <= n;i++)rnk[sa[i]] = i;
+
+		int h = 0;
+		lcp[0] = 0;
+		for(int i = 0;i < n;i++){
+			int j = sa[rnk[i] - 1];
+
+			if(h > 0)h--;
+			for(;j + h < n && i + h < n;h++){
+				if(S[j + h] != S[i + h])break;
+			}
+			lcp[rnk[i] - 1] = h;
+		}
+	}
+};
+
+int main()
+{
+	string S;
+	int N;
+
+	cin >> S;
+	cin >> N;
+	SuffixArray sa(S);
+
+	for(int i = 0 ;i < N;i++)
+	{
+		string T;
+		cin >> T;
+		if(sa.contain(T)) cout << 1 << endl;
+		else cout << 0 << endl;
+	}
+
+	return 0;
+}
+\end{lstlisting}
+
+
+\section{Data Structure}
+\subsection{Union Find}
+\begin{lstlisting}
+struct UF
+{
+	vector<int> par; // 親のインデックスを記憶する配列
+	vector<int> sz; // サイズを記憶する。
+	vector<int> rank;
+	// 初期化
+	UF(int n):par(n),sz(n),rank(n){
+		for(int i = 0; i < n; i++){
+			par[i] = i;sz[i] = 1;rank[i] = 0;
+		}
+	}
+	// 親を求める
+	int find(int x) {
+		if (par[x] == x) return x;
+		else return par[x] = find(par[x]);
+	}
+	// xとyの属する集合を併合
+	void unite(int x, int y) {
+		x = find(x); y = find(y);
+		if (x == y) return;
+		if(rank[x] < rank[y]){
+			par[x] = y;
+			sz[y] += sz[x];
+		}
+		else{
+			par[y] = x;
+			sz[x] += sz[y];
+			if(rank[x] == rank[y])rank[x]++;
+		}
+	}
+	// xとyが同じ集合ならtrue
+	bool same(int x, int y) { return find(x) == find(y); }
+	// 素の集合のサイズを求める
+	int size(int n){return sz[find(n)];}
+};
+\end{lstlisting}
+
+\subsection{Segment Tree}
+\begin{lstlisting}
+/*
+0-index
+functionの中を書いて使う
+segtree<ll> seg(n, [](ll a, ll b){return a + b;}, 0);
+*/
+template<typename T>
+struct segtree{
+	int n;
+	vector<T> dat;
+	T ZERO;
+	function<T(T,T)> func;//要素と要素をマージする関数
+
+	segtree(int n_, function<T(T,T)> func_, T zero):func(func_), ZERO(zero){
+	  n = 1;
+	  while(n < n_)n*=2;
+	  dat.resize(2*n);
+	  for(int i = 0;i < 2*n;i++)dat[i] = ZERO;
+	}
+
+	void update(int k, T a){
+	  k += n - 1;dat[k] = a;
+	  while(k > 0){
+		k = (k-1)/2;
+		dat[k] = func(dat[k*2+1],dat[k*2+2]);
+	  }
+	}
+
+	void set(int k, T a) {
+		k += n - 1;dat[k] = a;
+	}
+
+	void build(){
+		for(int i = n - 2;i >= 0;i--){
+			dat[i] = func(dat[2 * i + 1], dat[2 * i + 2]);
+		}
+	}
+
+	T get(int k){return dat[k+n-1];}
+
+	T que(int a,int b){
+		T L = ZERO,R = ZERO;
+		int A = a + n - 1;
+		int B = b + n - 1;
+		while(A < B){
+			if((A & 1) == 0)L = func(L,dat[A++]);
+            if((B & 1) == 0)R = func(dat[--B],R);
+            A = A >> 1;
+            B = B >> 1;
+		}
+		return func(L,R);
+	}
+};
+\end{lstlisting}
+
+\subsection{Lazy Segment Tree}
+\begin{lstlisting}
+template <typename T,typename E>
+struct SegmentTree{
+	typedef function<T(T,T)> F;
+	typedef function<T(T,E)> G;
+	typedef function<E(E,E)> H;
+	typedef function<E(E,int)> P;
+	int n;
+	F f;
+	G g;
+	H h;
+	P p;
+	T d1;
+	E d0;
+	vector<T> dat;
+	vector<E> laz;
+
+	SegmentTree(int n_,
+				F f,//要素と要素をマージする関数
+				G g,//要素に作用素を作用させる関数
+				H h,//作用素と作用素をマージする関数
+				T d1,//要素のモノイド
+				E d0,//作用素のモノイド
+				vector<T> v=vector<T>(),
+				P p=[](E a,int b){return a;})://区間に対する操作が要素数に比例して変化する場合
+	f(f),g(g),h(h),d1(d1),d0(d0),p(p){
+		init(n_);
+		if(n_==(int)v.size()) build(n_,v);
+	}
+
+	void init(int n_){
+		n=1;
+		while(n<n_) n*=2;
+		dat.clear();
+		dat.resize(2*n-1,d1);
+		laz.clear();
+		laz.resize(2*n-1,d0);
+	}
+
+	void build(int n_, vector<T> v){
+		for(int i=0;i<n_;i++) dat[i+n-1]=v[i];
+		for(int i=n-2;i>=0;i--){
+			dat[i]=f(dat[i*2+1],dat[i*2+2]);
+		}
+	}
+
+	inline void eval(int len,int k){
+		if(laz[k]==d0) return;
+		if(k*2+1<n*2-1){
+			laz[k*2+1]=h(laz[k*2+1],laz[k]);
+			laz[k*2+2]=h(laz[k*2+2],laz[k]);
+		}
+		dat[k]=g(dat[k],p(laz[k],len));
+		laz[k]=d0;
+	}
+
+
+	T update(int a,int b,E x,int k,int l,int r){
+		eval(r-l,k);
+		if(r<=a||b<=l) return dat[k];
+		if(a<=l&&r<=b){
+			laz[k]=h(laz[k],x);
+			return g(dat[k],p(laz[k],r-l));
+		}
+		return dat[k]=f(update(a,b,x,k*2+1,l,(l+r)/2),
+				update(a,b,x,k*2+2,(l+r)/2,r));
+	}
+
+	T update(int a,int b,E x){
+		return update(a,b,x,0,0,n);
+	}
+
+	T query(int a,int b,int k,int l,int r){
+		eval(r-l,k);
+		if(r<=a||b<=l) return d1;
+		if(a<=l&&r<=b) return dat[k];
+		T vl=query(a,b,k*2+1,l,(l+r)/2);
+		T vr=query(a,b,k*2+2,(l+r)/2,r);
+		return f(vl,vr);
+	}
+
+	T query(int a,int b){
+		return query(a,b,0,0,n);
+	}
+};
+/**
+	SegmentTree(int n_,
+				F f,//要素と要素をマージする関数
+				G g,//要素に作用素を作用させる関数
+				H h,//作用素と作用素をマージする関数
+				T d1,//要素のモノイド
+				E d0,//作用素のモノイド
+				vector<T> v=vector<T>(),//初期配列
+				P p=[](E a,int b){return a;})://区間に対する操作が要素数に比例して変化する場合
+
+	区間加算、区間和
+	SegmentTree<ll,ll> seg(n,
+	[](ll a,ll b){return a + b;},
+	[](ll a,ll b){return a + b;},
+	[](ll a,ll b){return a + b;},
+	0,
+	0,
+	vector<ll>(n,0),
+	[](ll a,int b){return a * b;});
+
+	区間更新、区間最小
+	SegmentTree<ll,ll> seg(n,
+	[](ll a,ll b){return min(a, b);},
+	[](ll a,ll b){return b;},
+	[](ll a,ll b){return b;},
+	INF,
+	INF,
+	vector<ll>(n,INF),
+	[](ll a,int b){return a;});
+
+	区間加算、区間最小
+
+	SegmentTree<ll,ll> seg(n,
+	[](ll a,ll b){return min(a, b);},
+	[](ll a,ll b){return a + b;},
+	[](ll a,ll b){return a + b;},
+	INF,
+	0,
+	vector<ll>(n,0),
+	[](ll a,int b){return a;});
+
+	区間更新、区間和
+	SegmentTree<ll,ll> seg(n,
+	[](ll a,ll b){return a + b;},
+	[](ll a,ll b){return b;},
+	[](ll a,ll b){return b;},
+	0,
+	INF,
+	vector<ll>(n,0),
+	[](ll a,int b){return a * b;});
+**/
+\end{lstlisting}
+
+\subsection{Lowest Common Ancestor}
+\begin{lstlisting}
+//普通のLCA(UFと一緒に)
+struct LCA{
+	//隣接リスト、(相手、重み)
+	vector<vector<pair<int,int> > > g;
+	//親
+	vector<vector<int> > parent;
+	//深さ
+	vector<int> depth;
+	UF uf;
+	int sz;
+	vector<bool> inited;
+
+	LCA(int n):g(n),parent(20,vector<int>(n)),
+	inited(n,false),depth(n),uf(n){sz = n;}
+
+	//辺の追加(点、点、重み)
+	void add_edge(int u,int v,int w = 1){
+		if(uf.same(u,v))return;
+		g[v].PB(MP(u,w));
+		g[u].PB(MP(v,w));
+		uf.unite(v,u);
+	}
+
+	void dfs(int v,int p,int d){
+		inited[v] = true;
+		parent[0][v] = p;
+		depth[v] = d;
+		REP(i,g[v].size()){
+			if(g[v][i].FI != p)dfs(g[v][i].FI,v,d+1);
+		}
+	}
+
+	void init(){
+		REP(i,sz)if(!inited[i])dfs(uf.find(i),-1,0);
+		REP(k,19){
+			REP(i,sz){
+				if(parent[k][i] < 0)parent[k+1][i] = -1;
+				else parent[k+1][i] = parent[k][parent[k][i]];
+			}
+		}
+	}
+
+	int ret_lca(int a,int b){
+
+		if(!uf.same(a,b))return -1;
+
+		if(depth[a] > depth[b])swap(a,b);
+		REP(k,20){
+			if((depth[b] - depth[a])>>k&1)b = parent[k][b];
+		}
+		if(a == b)return a;
+
+		for(int k = 19;k >= 0;k--){
+			if(parent[k][a] != parent[k][b])
+			{
+				a = parent[k][a];
+				b = parent[k][b];
+			}
+		}
+		return parent[0][a];
+	}
+
+};
+
+//任意の二点のパスの中の最大値を求められる。(UFと一緒に)
+struct LCA{
+	//隣接リスト、(相手、重み)
+	vector<vector<pair<int,int> > > g;
+	//親
+	vector<vector<int> > parent;
+	vector<vector<int> > value;
+	//深さ
+	vector<int> depth;
+	UF uf;
+	int sz;
+	vector<bool> inited;
+
+	map<pair<int,int> ,int> mp;
+
+	pair<int,int> Pair(int a,int b){
+		return MP(min(a,b),max(a,b));
+	}
+
+	LCA(int n):g(n),parent(20,vector<int>(n)),
+	inited(n,false),depth(n),uf(n),value(20,vector<int>(n)){sz = n;}
+
+	//辺の追加(点、点、重み)
+	void add_edge(int u,int v,int w = 1){
+		if(uf.same(u,v))return;
+		g[v].PB(MP(u,w));
+		g[u].PB(MP(v,w));
+		uf.unite(v,u);
+		mp[Pair(u,v)] = w;
+	}
+
+	void dfs(int v,int p,int d){
+		inited[v] = true;
+		value[0][v] = mp[Pair(v,p)];
+		parent[0][v] = p;
+		depth[v] = d;
+		REP(i,g[v].size())
+		{
+			if(g[v][i].FI != p)dfs(g[v][i].FI,v,d+1);
+		}
+	}
+
+	//頂点の追加後、ここで構築する
+	void init(){
+		REP(i,sz)if(!inited[i])dfs(uf.find(i),-1,0);
+		REP(k,19){
+			REP(i,sz){
+				if(parent[k][i] < 0){
+					parent[k+1][i] = -1;
+					value[k+1][i] = value[k][i];
+				}
+				else {
+					parent[k+1][i] = parent[k][parent[k][i]];
+					value[k+1][i] = max(value[k][i],value[k][parent[k][i]]);
+				}
+			}
+		}
+	}
+
+	int ret_lca(int a,int b){
+
+		if(!uf.same(a,b))return -1;
+
+		if(depth[a] > depth[b])swap(a,b);
+		REP(k,20){
+			if((depth[b] - depth[a])>>k&1)b = parent[k][b];
+		}
+		if(a == b)return a;
+
+		for(int k = 19;k >= 0;k--){
+			if(parent[k][a] != parent[k][b]){
+				a = parent[k][a];
+				b = parent[k][b];
+			}
+		}
+		return parent[0][a];
+	}
+
+	int ret_value(int a,int b){
+
+		if(!uf.same(a,b))return -1;
+		int ret = 0;
+		if(depth[a] > depth[b])swap(a,b);
+		REP(k,20){
+			if((depth[b] - depth[a])>>k&1){
+				ret = max(ret,value[k][b]);
+				b = parent[k][b];
+			}
+		}
+		if(a == b)return ret;
+
+		for(int k = 19;k >= 0;k--){
+			if(parent[k][a] != parent[k][b]){
+				ret = max(ret,value[k][a]);
+				ret = max(ret,value[k][b]);
+				a = parent[k][a];
+				b = parent[k][b];
+			}
+		}
+		ret = max(ret,value[0][a]);
+		ret = max(ret,value[0][b]);
+
+		return ret;
+	}
+
+};
+
+int main(){
+	return 0;
+}
+\end{lstlisting}
+
+\subsection{Convex Hull Trick}
+\begin{lstlisting}
+/*
+評価する直線の傾きが単調減少
+求めるxが単調増加の時の最小値
+*/
+class ConvexHullTrick_Monotony{
+	const ll inf = 1e9;
+	struct Line{
+		ll a,b;
+		Line(ll x,ll y):a(x),b(y){};
+	};
+
+	deque<Line> deq;
+
+public:
+	ConvexHullTrick_Monotony(){}
+	void Add_back(ll a,ll b){
+		if(deq.size() <= 1){
+			deq.push_back(Line(a,b));
+		}
+		else{
+			while(deq.size() > 1){
+				ll a1 = deq[deq.size()-2].a;
+				ll b1 = deq[deq.size()-2].b;
+				ll a2 = deq[deq.size()-1].a;
+				ll b2 = deq[deq.size()-1].b;
+				if((b2 - b1)*(a2 - a) < (b - b2)*(a1 - a2)){
+					break;
+				}
+				else{
+					deq.pop_back();
+				}
+			}
+			deq.push_back(Line(a,b));
+		}
+	}
+
+	ll seek_front(ll x){
+		while(deq.size() > 1 && deq[0].a * x + deq[0].b > deq[1].a * x + deq[1].b){
+			deq.pop_front();
+		}
+		return deq[0].a * x + deq[0].b;
+	}
+};
+
+int main(){
+	ConvexHullTrick_Monotony CHT;
+
+	int n;cin >> n;
+
+	REP(i,n){
+		ll a;cin >> a;
+		CHT.Add_back(-2*(i+1),a+(i+1)*(i+1));
+	}
+
+	REP(i,n){
+		cout << CHT.seek_front(i+1) + (i+1)*(i+1) << endl;
+	}
+
+	return 0;
+}
+\end{lstlisting}
+
+\subsection{Li Chao Tree}
+\begin{lstlisting}
+template<typename T>
+struct LiChaoTree {
+
+    vector<pair<T, T>> dat;
+    vector<ll> x;
+    pair<T, T> inf;
+    int n;
+
+    LiChaoTree(int n_, pair<T, T> inf_) {
+        n = 1;
+        while(n < n_ + 1)n *= 2;
+        inf = inf_;
+
+        dat = vector<pair<T, T>>(2 * n, inf);
+        x = vector<ll>(n + 1);
+        REP(i, x.size())x[i] = i;
+    }
+
+    LiChaoTree(vector<ll> coordinate, pair<T, T> inf_) {
+        n = 1;
+        while(n < coordinate.size() + 1)n *= 2;
+        inf = inf_;
+
+        dat = vector<pair<T, T>>(2 * n, inf);
+        x = vector<ll>(n + 1);
+		REP(i, x.size()){
+            if(i < coordinate.size())x[i] = coordinate[i];
+            else x[i] = x[i-1] + 1;
+        }
+    }
+
+    T func(pair<T, T> line, int a){
+        return line.first * a + line.second;
+    }
+
+    void add_line(pair<T, T> line, int k, int l, int r) {
+        int m = (l + r) / 2;
+        T lx = x[l];
+        T mx = x[m];
+        T rx = x[r];
+        bool left = (func(line, lx) < func(dat[k], lx));
+        bool mid = (func(line, mx) < func(dat[k], mx));
+        bool right = (func(line, rx) < func(dat[k], rx));
+
+        if(!left && !right){
+            return;
+        }
+        if(mid){
+            swap(line, dat[k]);
+        }
+        if(left != mid && 2*k+1 < dat.size()){
+            add_line(line, 2*k+1, l, m);
+        }
+        else if(right != mid && 2*k+2 < dat.size()){
+            add_line(line, 2*k+2, m, r);
+        }
+    }
+
+    // [a, b) に線分を追加
+    void add_line(pair<T, T> line, int a, int b) {
+        int A = a + n - 1;
+        int B = b + n - 1;
+        int sz = 1;
+        int al = a;
+        int bl = b;
+        while(A < B){
+            if((A & 1) == 0){
+                add_line(line, A++, al, al+sz);
+                al += sz;
+            }
+            if((B & 1) == 0){
+                bl -= sz;
+                add_line(line, --B, bl, bl+sz);
+            }
+            A = A >> 1;
+            B = B >> 1;
+            sz = sz << 1;
+        }
+    }
+
+    // 直線を追加
+    void add_line(pair<T, T> line){
+        add_line(line, 0, 0, n);
+    }
+
+    T query(int a){
+        int ax = x[a];
+        a += n - 1;
+        T ans = func(dat[a], ax);
+        while(a > 0){
+            a = (a - 1) / 2;
+            ans = min(ans, func(dat[a], ax));
+        }
+        return ans;
+    }
+
+};
+\end{lstlisting}
+
+
+\section{Geometry}
+\begin{lstlisting}
+#define curr(PP, i) PP[i]
+#define next(PP, i) PP[(i+1)%PP.size()]
+#define diff(PP, i) (next(PP, i) - curr(PP, i))
+#define eq(n,m) (abs((n)-(m)) < EPS)
+
+typedef long long ll;
+typedef pair<ll, ll> P;
+
+const double EPS = 1e-8;
+const double EPS_GIG = 1e-3;
+const double PI = acos(-1.0);
+typedef complex<double> point;
+namespace std {
+	bool operator < (const point& a, const point& b) {
+		return real(a) != real(b) ? real(a) < real(b) : imag(a) < imag(b);
+	}
+
+	bool operator == (const point& a,const point& b) {
+		return (abs(a.real() - b.real()) < EPS && abs(a.imag() - b.imag()) < EPS);
+	}
+}
+struct circle {
+	point p; double r;
+	circle(){}
+	circle(const point &p, double r) : p(p), r(r) { }
+};
+
+// 扇型、中心と半径、二つの端点
+// 現在中心角が180未満の前提
+struct sector {
+	point o;
+	point a, b;
+	double r;
+	sector(){}
+	sector(point O, point A, point B, double _r) :o(O), a(A), b(B), r(_r) {}
+};
+
+struct segment : public array<point, 2> {
+	segment(const point &a, const point &b) {
+		at(0) = a;
+		at(1) = b;
+	}
+};
+
+double cross(const point& a, const point& b) {
+	return imag(conj(a)*b);
+}
+
+double dot(const point& a, const point& b) {
+	return real(conj(a)*b);
+}
+
+//角度足し算
+double add_rad(double a,double b){
+	double ret = a + b;
+	if(ret > 2 * PI)ret -= 2 * PI;
+	return ret;
+}
+
+//なす角(vector)
+double angle(const point &a,const point &b) {
+	auto tmp = abs(arg(a) - arg(b));
+	return min(tmp, 2 * PI - tmp);
+}
+
+double angle(const segment &s1,const segment &s2) {
+	return angle(s1[1] - s1[0], s2[1] - s2[0]);
+}
+
+//点の回転
+point rotate(const point &p, double rad) {
+	double x = p.real() * cos(rad) - p.imag() * sin(rad);
+	double y = p.imag() * cos(rad) + p.real() * sin(rad);
+	return point(x, y);
+}
+
+//並行
+bool isParallel(const point &a, const point &b){
+    return abs(cross(a,b)) < EPS;
+}
+bool isParallel(const segment &a, const segment &b){
+    return isParallel(a[1]-a[0], b[1]-b[0]);
+}
+//直行
+bool isOrthogonal(const point &a,const point &b){
+	return abs(angle(a,b) - PI / 2) < EPS;
+}
+bool isOrthogonal(const segment &a,const segment &b){
+	return isOrthogonal(a[1]-a[0],b[1]-b[0]);
+}
+
+/*
+a → b で時計方向に折れて b → c
+a → b で半時計方向に折れて b → c
+a → b で逆を向いて a を通り越して b → c
+a → b でそのまま b → c
+a → b で逆を向いて b → c ( または b == c )
+*/
+
+int ccw(point a, point b, point c) {
+	b -= a; c -= a;
+	if (cross(b, c) > EPS)   return +1;       // counter clockwise
+	if (cross(b, c) + EPS < 0)   return -1;       // clockwise
+	if (dot(b, c) < 0)     return +2;       // c--a--b on line
+	if (norm(b) < norm(c)) return -2;       // a--b--c on line
+	return 0;
+}
+
+bool intersectLL(const segment &l, const segment &m) {
+	return abs(cross(l[1] - l[0], m[1] - m[0])) > EPS || // non-parallel
+		abs(cross(l[1] - l[0], m[0] - l[0])) < EPS;   // same line
+}
+bool intersectLS(const segment &l, const segment &s) {
+	return cross(l[1] - l[0], s[0] - l[0])*       // s[0] is left of l
+		cross(l[1] - l[0], s[1] - l[0]) < EPS; // s[1] is right of l
+}
+bool intersectLP(const segment &l, const point &p) {
+	return abs(cross(l[1] - p, l[0] - p)) < EPS;
+}
+bool intersectSP(const segment &s, const point &p) {
+	auto a = s[0] - p;
+	auto b = s[1] - p;
+	return (abs(cross(a, b)) < EPS && dot(a, b) <= EPS); // triangle inequality
+}
+//端点の交差も考える
+bool intersectSS(const segment &s, const segment &t) {
+	return ccw(s[0], s[1], t[0]) * ccw(s[0], s[1], t[1]) <= 0 &&
+		ccw(t[0], t[1], s[0]) * ccw(t[0], t[1], s[1]) <= 0;
+}
+//端点の交差hは考えない
+bool strictIntersectSS(const segment &s, const segment &t) {
+	return ccw(s[0], s[1], t[0]) * ccw(s[0], s[1], t[1]) == -1 &&
+		ccw(t[0], t[1], s[0]) * ccw(t[0], t[1], s[1]) == -1;
+}
+
+point projection(const segment &l, const point &p) {
+	double t = dot(p - l[0], l[0] - l[1]) / norm(l[0] - l[1]);
+	return l[0] + t*(l[0] - l[1]);
+}
+point reflection(const segment &l, const point &p) {
+	return p + 2. * (projection(l, p) - p);
+}
+double distanceLP(const segment &l, const point &p) {
+	return abs(p - projection(l, p));
+}
+double distanceLL(const segment &l, const segment &m) {
+	return intersectLL(l, m) ? 0 : distanceLP(l, m[0]);
+}
+double distanceLS(const segment &l, const segment &s) {
+	if (intersectLS(l, s)) return 0;
+	return min(distanceLP(l, s[0]), distanceLP(l, s[1]));
+}
+double distanceSP(const segment &s, const point &p) {
+	const point r = projection(s, p);
+	if (intersectSP(s, r)) return abs(r - p);
+	return min(abs(s[0] - p), abs(s[1] - p));
+}
+double distanceSS(const segment &s, const segment &t) {
+	if (intersectSS(s, t)) return 0;
+	return min(min(distanceSP(s, t[0]), distanceSP(s, t[1])),
+		min(distanceSP(t, s[0]), distanceSP(t, s[1])));
+}
+double distancePP(const point &a,const point &b){
+	return abs(a-b);
+}
+
+/*多角形内包判定
+half-line crossing method
+OUT:0
+ON:1
+IN:2
+*/
+int contains(const vector<point>& Poly, const point& p) {
+	bool in = false;
+	for (int i = 0; i < Poly.size(); ++i) {
+		point a = curr(Poly, i) - p, b = next(Poly, i) - p;
+		if (imag(a) > imag(b)) swap(a, b);
+		if (imag(a) + EPS <= 0 && EPS < imag(b))
+			if (cross(a, b) < 0) in = !in;
+		if (abs(cross(a, b)) < EPS && dot(a, b) <= EPS) return 1;
+	}
+	return in ? 2 : 0;
+}
+
+/*
+OUT:0
+ON:1
+IN:2
+*/
+int contain_sector(const sector &sec, point &p){
+	if(eq(abs(p - sec.o), sec.r))return 1;
+	if(intersectSP(segment(sec.o, sec.a), p))return 1;
+	if(intersectSP(segment(sec.o, sec.b), p))return 1;
+	if(abs(p - sec.o) + EPS > sec.r)return 0;
+	point vec = p - sec.o;
+	point vecA = sec.a - sec.o;
+	point vecB = sec.b - sec.o;
+	if(angle(vec, vecA) + EPS < angle(vecA, vecB) && angle(vec, vecB) + EPS < angle(vecA, vecB))return 2;
+	return 0;
+}
+
+//交点
+point crosspointSS(const segment &l, const segment &m) {
+	double A = cross(l[1] - l[0], m[1] - m[0]);
+	double B = cross(l[1] - l[0], l[1] - m[0]);
+	if (abs(A) < EPS && abs(B) < EPS) return m[0]; // same line
+	if (abs(A) < EPS) return point(INF,INF); // !!!PRECONDITION NOT SATISFIED!!!
+	return m[0] + B / A * (m[1] - m[0]);
+}
+
+vector<point> crosspointCL(const circle &c, const segment &l) {
+	auto ret = vector<point>(2, point(INF, INF));
+	auto pro_p = projection(l, c.p);
+	auto dist = distanceLP(l, c.p);
+	if(abs(dist - c.r) < EPS){
+		ret[0] = pro_p;
+		return ret;
+	}
+	if(c.r < dist){
+		return ret;
+	}
+	point vec = (l[1] - l[0]) * sqrt(c.r * c.r - dist * dist) / abs(l[1] - l[0]);
+	ret[0] = pro_p + vec;
+	ret[1] = pro_p - vec;
+	return ret;
+}
+
+vector<point> crosspointCC(const circle c1, const circle c2) {
+	auto ret = vector<point>(2, point(INF, INF));
+	auto dist = abs(c2.p - c1.p);
+	if(eq(dist, c1.r + c2.r) || eq(dist, abs(c2.r - c1.r))){
+		auto tmp = c2.p - c1.p;
+		ret[0] = c1.p + tmp * (c1.r / dist);
+		return ret;
+	}
+	if(c1.r + c2.r < dist || dist < abs(c1.r - c2.r)){
+		return ret;
+	}
+	auto alpha = acos((c1.r * c1.r + dist * dist - c2.r * c2.r) / (2 * c1.r * dist));
+	auto theta = atan2(c2.p.imag() - c1.p.imag(), c2.p.real() - c1.p.real());
+	ret[0] = c1.p + point(cos(theta + alpha) * c1.r, sin(theta + alpha) * c1.r);
+	ret[1] = c1.p + point(cos(theta - alpha) * c1.r, sin(theta - alpha) * c1.r);
+	return ret;
+}
+
+bool isOnSector(const sector sec, const point p) {
+	point vec = p - sec.o;
+	point vecA = sec.a - sec.o;
+	point vecB = sec.b - sec.o;
+	if(eq(angle(vec, vecA) + angle(vec, vecB), angle(vecA, vecB)))return true;
+	return false;
+}
+
+vector<point> crosspointSecS(const sector sec, const segment s) {
+	circle c = circle(sec.o, sec.r);
+	auto ret = crosspointCL(c, s);
+	point inf = point(INF, INF);
+	REP(i, 2){
+		if(eq(ret[i], inf))continue;
+		if(!isOnSector(sec, ret[i])){
+			ret[i] = inf;
+			continue;
+		}
+		if(!intersectSP(s, ret[i])){
+			ret[i] = inf;
+		}
+	}
+	return ret;
+}
+vector<point> crosspointSecSec(const sector sec1, const sector sec2) {
+	circle c1 = circle(sec1.o, sec1.r);
+	circle c2 = circle(sec2.o, sec2.r);
+	auto ret = crosspointCC(c1, c2);
+	point inf = point(INF, INF);
+	REP(i, 2){
+		if(!isOnSector(sec1, ret[i])){
+			ret[i] = inf;
+			continue;
+		}
+		if(!isOnSector(sec2, ret[i])){
+			ret[i] = inf;
+		}
+	}
+	return ret;
+}
+
+
+//凸包
+vector<point> convex_hull(vector<point> ps) {
+	int n = ps.size(), k = 0;
+	sort(ps.begin(), ps.end());
+	vector<point> ch(2*n);
+	for (int i = 0; i < n; ch[k++] = ps[i++]) // lower-hull
+		while (k >= 2 && ccw(ch[k-2], ch[k-1], ps[i]) == -1) --k;
+	for (int i = n-2, t = k+1;i >= 0; ch[k++] = ps[i--]) // upper-hull
+		while (k >= t && ccw(ch[k-2], ch[k-1], ps[i]) == -1) --k;
+	ch.resize(k - 1);
+	return ch;
+}
+
+//見えるか(可視グラフ用)
+bool block_off(const point &a, const point &b, const vector<point> &obj) {
+  point m = (a + b) * 0.5;
+  bool on = false, in = false;
+  for (int j = 0; j < obj.size(); ++j) {
+    point c = curr(obj,j), d = next(obj,j);
+    if (imag(d) < imag(c)) swap(c, d);
+    if (cross(a-c,b-c) * cross(a-d,b-d) < 0 &&    // strictly intersect.
+        cross(c-a,d-a) * cross(c-b,d-b) < 0) return true;
+    if (cross(a-c,b-c) == 0 && dot(a-c,b-c) < 0) return true;
+    if (imag(c) <= imag(m) && imag(m) < imag(d))  // strictly contain.
+      if (cross(c-m,d-m) < 0) in = !in;
+    if (cross(c-m,d-m) == 0 && dot(c-m,d-m) <= EPS) on = true;
+  }
+  return !on && in;
+}
+
+//面積
+double area(const vector<point>& p) {
+	double A = 0;
+	for (int i = 0; i < p.size(); ++i)
+		A += cross(curr(p, i), next(p, i));
+	return A / 2.;
+}
+
+//凸包判定
+bool isConvex(vector<point> poly){
+	int sz = poly.size();
+	REP(i,sz){
+		if(ccw(poly[i],poly[(i+1)%sz],poly[(i+2)%sz]) == -1)return false;
+	}
+	return true;
+}
+
+double convex_diameter(const vector<point> &pt) {
+  const int n = pt.size();
+  int is = 0, js = 0;
+  for (int i = 1; i < n; ++i) {
+    if (imag(pt[i]) > imag(pt[is])) is = i;
+    if (imag(pt[i]) < imag(pt[js])) js = i;
+  }
+  double maxd = norm(pt[is]-pt[js]);
+
+  int i, maxi, j, maxj;
+  i = maxi = is;
+  j = maxj = js;
+  do {
+    if (cross(diff(pt,i), diff(pt,j)) >= 0) j = (j+1) % n;
+    else i = (i+1) % n;
+    if (norm(pt[i]-pt[j]) > maxd) {
+      maxd = norm(pt[i]-pt[j]);
+      maxi = i; maxj = j;
+    }
+  } while (i != is || j != js);
+  return sqrt(maxd); /* farthest pair is (maxi, maxj). */
+}
+
+vector<point> convex_cut(const vector<point> P, const segment& l) {
+  vector<point> Q;
+  for (int i = 0; i < P.size(); ++i) {
+    point A = curr(P, i), B = next(P, i);
+    if (ccw(l[0], l[1], A) != -1) Q.push_back(A);
+    if (ccw(l[0], l[1], A)*ccw(l[0], l[1], B) < 0)
+      Q.push_back(crosspointSS(segment(A, B), l));
+  }
+  return Q;
+}
+
+int main(){
+	cin.tie(0);cout.tie(0);ios::sync_with_stdio(false);
+
+	return 0;
+}
+\end{lstlisting}
+
+
+\section{Number Theory}
+\subsection{Extend Gcd}
+\begin{lstlisting}
+// ax + by = gcd(a, b)
+long long extGcd(long long a, long long b, long long &x, long long &y) {
+    if(b == 0) {
+        x = 1;
+        y = 0;
+        return a;
+    }
+    long long d = extGcd(b, a%b, y, x);
+    y -= a / b * x;
+    return d;
+}
+
+// aで割った余りがx、bで割った余りがyの時の、abで割った余り
+// aとbは互いに素
+long long CRT(long long a, long long b, long long x, long long y) {
+    long long c, d;
+    extGcd(a, b, c, b);
+    ll ret = (a * y % (a * b) * c % (a * b) + (a * b)) % (a * b);
+    return (ret + b * x  % (a * b)* d % (a * b) + (a * b)) % (a * b);
+}
+
+
+int main(){
+
+    ll x, y;
+    ll out = extGcd(111, 30, x , y);
+    cout << x << " " << y << " " << 111 * x + 30 * y << " " << out << endl;
+
+	return 0;
+}
+\end{lstlisting}
+
+\subsection{Baby Step Giant Step}
+\begin{lstlisting}
+//g^x = y(mod MOD)を満たすxを探す
+long long babyStepGiantStep(ll g, ll y) {
+	long long m = sqrt(MOD) + 1;
+	map<long long,long long> mp;
+	long long tmp = 1;
+	for(int i = 0;i < m;i++){
+		mp[tmp] = i;
+		tmp = (tmp * g) % MOD;
+	}
+	long long gm = 1;
+	for(int i = 0;i < m;i++)gm = (gm * g) % MOD;
+	long long factg = mod_div(1, gm);
+	long long ganma = y;
+	for(int i = 0;i < m;i++){
+		auto it = mp.find(ganma);
+		if(it != mp.end()){
+			return i * m + (it->second);
+		}
+		ganma = ganma * factg % MOD;
+	}
+	return -1;
+}
+\end{lstlisting}
+
+
+\section{Other}
+\subsection{MOD}
+\begin{lstlisting}
+#define MOD 1000000007
+
+long long totient(long long a) {
+	ll ret = a;
+	for(int i = 2;i * i <= a;i++){
+		if(a % i == 0){
+			ret = ret * (i - 1) / i;
+			while(a % i == 0)a /= i;
+		}
+	}
+	if(a > 1)ret = ret * (a - 1) / a;
+	return ret;
+}
+
+// a / b (mod p) b と p は互いに素
+// O(sqrt(p))かかるので注意
+long long totient_div(long long a, long long b, long long p) {
+	long long ret = a;
+	long long tp = totient(p) - 1;
+	long long c = b;
+	for(int i = 0;i <= 60;i++){
+		if(tp & (1LL << i))ret = (ret * c) % p;
+		c = (c * c) % p;
+	}
+	return ret;
+}
+
+//a^b % MOD
+long long mod_pow(ll a,ll b){
+	long long ret = 1;
+	long long c = a;
+	for(int i = 0;i <= 60;i++){
+		if(b & (1LL << i))ret = (ret * c) % MOD;
+		c = (c * c) % MOD;
+	}
+	return ret;
+}
+
+//ａをbで割る
+long long mod_div(long long a,long long b){
+	long long tmp = MOD - 2,c = b,ret = 1;
+	while(tmp > 0){
+		if(tmp & 1){
+			ret *= c;ret %= MOD;
+		}
+		c *= c;c %= MOD;tmp >>= 1;
+	}
+	return a*ret%MOD;
+}
+
+#define MAX_K 333333
+vector<long long> kaijo(MAX_K);
+long long combination(long long n, long long r){
+    if(n < r || n < 0 || r < 0)
+        return 0;
+	if(kaijo[0] != 1){
+		kaijo[0] = 1;
+		for(long long i = 1;i < MAX_K;i++)kaijo[i] = (kaijo[i-1] * i) % MOD;
+	}
+    long long ret = kaijo[n];
+	long long tmp = (kaijo[r] * kaijo[n-r]) % MOD;
+    return mod_div(ret,tmp);
+}
+\end{lstlisting}
+
+\subsection{Gaussian elimination}
+\begin{lstlisting}
+#define BIT_N 2002
+typedef bitset<BIT_N> Bit;
+
+int Gaussian_elimination(vector<Bit> &v){
+    int rank = 0;
+    REP(i, BIT_N) {
+        int pla = -1;
+        for(int j = rank;j < v.size();j++){
+            if(v[j][i] == 1){
+                pla = j;
+                break;
+            }
+        }
+
+        if(pla != -1){
+            swap(v[rank], v[pla]);
+            for(int j = 0;j < v.size();j++){
+                if(j == rank)continue;
+                if(v[j][i] == 1)v[j] ^= v[rank];
+            }
+            rank++;
+        }
+    }
+    return rank;
+}
+
+int Gaussian_elimination(vector<ll> &v){
+	int rank = 0;
+	REP(i, 60){
+		int pla = -1;
+		for(int j = rank;j < v.size();j++){
+			if(v[j] & (1LL << i)){
+				pla = j;
+				break;
+			}
+		}
+		if(pla != -1){
+			swap(v[rank], v[pla]);
+			REP(j,v.size()){
+				if(j == rank)continue;
+				if(v[j] & (1LL << i))v[j] ^= v[rank];
+			}
+			rank++;
+		}
+	}
+    return rank;
+}
+\end{lstlisting}
+
+\subsection{Levenshtein}
+\begin{lstlisting}
+#define D 10000
+int dp[D][D];
+void LS(string a,string b)
+{
+	REP(i,a.size()+1)dp[i][0]=i;
+	REP(i,b.size()+1)dp[0][i]=i;
+	for(int i=1;i<=a.size();i++)
+	{
+		for(int j=1;j<=b.size();j++)
+		{
+			int q=1;if(a[i-1]==b[j-1])q = 0;
+			dp[i][j]=min(min(dp[i-1][j-1]+q,dp[i][j-1]+1),dp[i-1][j]+1);
+		}
+	}
+}
+int main()
+{
+	string a,b;cin>>a>>b;
+	cout<<(LS(a,b),dp[a.size()][b.size()])<<endl;
+	return 0;
+}
+\end{lstlisting}
+
+\subsection{Independent Set}
+\begin{lstlisting}
+//0 start
+//40頂点までの最大独立点集合を求める
+struct IndependentSet {
+
+	vector<pair<int,int> > v;
+	vector<int> dp;
+	vector<int> okaa;
+	vector<int> okbb;
+	vector<int> okba;
+	int n;
+
+	IndependentSet(int _n):dp(1<<(_n+1)/2),okaa((_n+1)/2),okbb((_n+1)/2),okba((_n+1)/2){
+		n = _n;
+	}
+
+	void addEdge(int a,int b){
+		v.EB(a, b);
+	}
+
+	int solve(){
+		int Sa = n/2;
+		int Sb = n - Sa;
+		//initialize
+		REP(i,Sa){
+			okaa[i] = (1 << Sa) - 1;
+		}
+		REP(i,Sb){
+			okbb[i] = (1 << Sb) - 1;
+			okba[i] = (1 << Sa) - 1;
+		}
+
+		REP(q,v.size()){
+			int a = min(v[q].FI,v[q].SE);
+			int b = max(v[q].FI,v[q].SE);
+			if(b < Sa){
+				okaa[a] &= ~(1 << b);
+				okaa[b] &= ~(1 << a);
+			}
+			else if(a < Sa){
+				okba[b-Sa] &= ~(1 << a);
+			}
+			else{
+				okbb[a-Sa] &= ~(1 << (b-Sa));
+				okbb[b-Sa] &= ~(1 << (a-Sa));
+			}
+		}
+
+		REP(q,(1<<Sa)){
+			int now = q;
+			int num = 0;
+			REP(i,Sa){
+				if(q & (1 << i)){now &= okaa[i];num++;}
+			}
+			if(now != q)continue;
+			dp[q] = num;
+		}
+
+		REP(i,(1<<Sa)){
+			REP(j,Sa){
+				dp[i|(1<<j)] = max(dp[i],dp[i|(1<<j)]);
+			}
+		}
+
+		int ret = 0;
+		REP(q,(1<<Sb)){
+			int node = q;
+			int now = 0;
+			REP(i,Sb){
+				if(q & (1<<i)){node &= okbb[i];now++;}
+			}
+			if(node!=q)continue;
+
+			int aa = (1<<Sa)-1;
+			REP(i,Sb)
+			{
+				if(q & (1<<i))aa &= okba[i];
+			}
+			ret = max(ret,now+dp[aa]);
+		}
+
+		return ret;
+	}
+
+};
+
+int main(){
+	int n,m;
+	cin >> n >> m;
+	IndependentSet seica(n);
+	REP(i,m){
+		int a,b;cin >> a >> b;
+		seica.addEdge(a-1, b-1);
+	}
+
+	cout << seica.solve() << endl;
+
+	return 0;
+}
+\end{lstlisting}
+
+\subsection{Matrix}
+\begin{lstlisting}
+template<class type>
+class matrix {
+private:
+	size_t H, W;
+	std::vector<type> mat;
+public:
+	matrix() : H(0), W(0), mat(std::vector<type>()) {};
+	matrix(size_t N_) : H(N_), W(N_), mat(std::vector<type>(N_ * N_)) {};
+	matrix(size_t H_, size_t W_) : H(H_), W(W_), mat(std::vector<type>(H_ * W_)) {};
+	type& at(size_t r, size_t c) { return mat[r * W + c]; }
+	type at(size_t r, size_t c) const { return mat[r * W + c]; }
+	matrix& operator+=(const matrix& m) {
+		assert(H == m.H && W == m.W);
+		for (size_t i = 0; i < H; ++i) {
+			for (size_t j = 0; j < W; ++j) {
+				mat[i * W + j] += m.mat[i * W + j];
+			}
+		}
+	}
+	matrix& operator-=(const matrix& m) {
+		assert(H == m.H && W == m.W);
+		for (size_t i = 0; i < H; ++i) {
+			for (size_t j = 0; j < W; ++j) {
+				mat[i * W + j] -= m.mat[i * W + j];
+			}
+		}
+	}
+	matrix& operator*=(const matrix& m) {
+		assert(W == m.H);
+		matrix ans(H, m.W);
+		for (size_t i = 0; i < H; ++i) {
+			for (size_t j = 0; j < m.W; ++j) {
+				for (size_t k = 0; k < W; ++k) {
+					ans.mat[i * m.W + j] += mat[i * W + k] * m.mat[k * m.W + j];
+				}
+			}
+		}
+		return (*this) = ans;
+	}
+	matrix operator+(const matrix& m) const { return matrix(*this) += m; }
+	matrix operator-(const matrix& m) const { return matrix(*this) -= m; }
+	matrix operator*(const matrix& m) const { return matrix(*this) *= m; }
+};
+
+template<class type>
+matrix<type> unit(int N) {
+	matrix<type> ret(N);
+	for (size_t i = 0; i < N; ++i) {
+		ret.at(i, i) = type(1);
+	}
+	return ret;
+}
+\end{lstlisting}
+
+\subsection{Fast Fourier Transform}
+\begin{lstlisting}
+struct FastFourierTransform {
+  using C = complex< double >;
+
+  const double PI = acos(-1);
+  vector< vector< C > > rts, rrts;
+
+  void ensure_base(int N) {
+    if(rts.size() >= N) return;
+    rts.resize(N), rrts.resize(N);
+    for(int i = 1; i < N; i <<= 1) {
+      if(rts[i].size()) continue;
+      rts[i].resize(i), rrts[i].resize(i);
+      for(int k = 0; k < i; k++) {
+        rts[i][k] = polar(1.0, PI / i * k);
+        rrts[i][k] = polar(1.0, -PI / i * k);
+      }
+    }
+  }
+
+  void DiscreteFourierTransform(vector< C > &F, bool rev) {
+    const int N = (int) F.size();
+    auto &r = rev ? rrts : rts;
+
+    for(int i = 0, j = 1; j + 1 < N; j++) {
+      for(int k = N >> 1; k > (i ^= k); k >>= 1);
+      if(i > j) swap(F[i], F[j]);
+    }
+    ensure_base(N);
+    C s, t;
+    for(int i = 1; i < N; i <<= 1) {
+      for(int j = 0; j < N; j += i * 2) {
+        for(int k = 0; k < i; k++) {
+          s = F[j + k];
+          t = C(F[j + k + i].real() * r[i][k].real() - F[j + k + i].imag() * r[i][k].imag(),
+                F[j + k + i].real() * r[i][k].imag() + F[j + k + i].imag() * r[i][k].real());
+          F[j + k] = s + t, F[j + k + i] = s - t;
+        }
+      }
+    }
+    if(rev) for(int i = 0; i < N; i++) F[i] /= N;
+  }
+
+  vector< long long > Multiply(const vector< int > &A, const vector< int > &B) {
+    int sz = 1;
+    while(sz < A.size() + B.size() - 1) sz <<= 1;
+    vector< C > F(sz), G(sz);
+    for(int i = 0; i < A.size(); i++) F[i] = A[i];
+    for(int i = 0; i < B.size(); i++) G[i] = B[i];
+    DiscreteFourierTransform(F, false);
+    DiscreteFourierTransform(G, false);
+    for(int i = 0; i < sz; i++) F[i] *= G[i];
+    DiscreteFourierTransform(F, true);
+    vector< long long > X(A.size() + B.size() - 1);
+    for(int i = 0; i < A.size() + B.size() - 1; i++) X[i] = F[i].real() + 0.5;
+    return (X);
+  }
+};
+
+
+int main() {
+  int N;
+  scanf("%d", &N);
+  vector< int > A(N + 1), B(N + 1);
+  for(int i = 0; i < N; i++) scanf("%d %d", &A[i + 1], &B[i + 1]);
+  FastFourierTransform fft;
+  auto C = fft.Multiply(A, B);
+  for(int i = 1; i <= 2 * N; i++) printf("%lld\n", C[i]);
+}
+\end{lstlisting}
+
+
+\end{document}
